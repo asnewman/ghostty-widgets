@@ -64,8 +64,8 @@ struct TerminalView<ViewModel: TerminalViewModel>: View {
         return URL(fileURLWithPath: surfacePwd)
     }
 
-    /// State for the custom widget side panel
-    @StateObject private var sidePanelModel = SidePanelModel()
+    /// State for the custom widget bottom panel (chin)
+    @StateObject private var bottomPanelModel = BottomPanelModel()
 
     var body: some View {
         switch ghostty.readiness {
@@ -74,13 +74,7 @@ struct TerminalView<ViewModel: TerminalViewModel>: View {
         case .error:
             ErrorView()
         case .ready:
-            HStack(spacing: 0) {
-                if sidePanelModel.isExpanded {
-                    SidePanelView(model: sidePanelModel)
-                        .transition(.move(edge: .leading).combined(with: .opacity))
-                    Divider()
-                }
-
+            VStack(spacing: 0) {
                 ZStack {
                     VStack(spacing: 0) {
                         // If we're running in debug mode we show a warning so that users
@@ -133,7 +127,10 @@ struct TerminalView<ViewModel: TerminalViewModel>: View {
                 }
             }
             .frame(maxWidth: .greatestFiniteMagnitude, maxHeight: .greatestFiniteMagnitude)
-            }
+
+            Divider()
+            BottomPanelView(model: bottomPanelModel)
+        }
         }
     }
 }
