@@ -2,7 +2,7 @@
 
 > **Warning**: Work in progress. Layouts and APIs are experimental and subject to change.
 
-A modification of [Ghostty](https://github.com/ghostty-org/ghostty) that adds a collapsible native SwiftUI widget side panel to the macOS app.
+A modification of [Ghostty](https://github.com/ghostty-org/ghostty) that adds a native SwiftUI widget bottom panel ("chin") to the macOS app.
 
 ## Prerequisites
 
@@ -25,9 +25,9 @@ A modification of [Ghostty](https://github.com/ghostty-org/ghostty) that adds a 
 
 ## How It Works
 
-- The side panel is implemented in SwiftUI in `macos/Sources/Features/Terminal/SidePanelView.swift`.
-- It is mounted in `macos/Sources/Features/Terminal/TerminalView.swift` inside an `HStack` alongside the terminal split tree.
-- When the panel expands or collapses, Ghostty's existing frame listeners handle PTY column/row recalculation automatically.
+- The bottom panel ("chin") is implemented in SwiftUI in `macos/Sources/Features/Terminal/BottomPanelView.swift`.
+- It is mounted in `macos/Sources/Features/Terminal/TerminalView.swift` inside a `VStack` below the terminal split tree.
+- Ghostty's existing frame listeners handle PTY column/row recalculation automatically.
 
 ## Updating from Upstream
 

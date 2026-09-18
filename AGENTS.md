@@ -7,19 +7,19 @@ Welcome AI agents and contributors! This document outlines the architecture, cod
 ## 1. Project Overview & Architecture
 
 This repository is a fork / custom branch of **Ghostty** (the terminal emulator created by Mitchell Hashimoto).
-The core objective is to add a native, extensible **SwiftUI Widget Side Panel** to the macOS client (`macos/`) while remaining lightweight and cleanly rebaseable against upstream Ghostty (`main`).
+The core objective is to add a native, extensible **SwiftUI Widget Bottom Panel ("Chin")** to the macOS client (`macos/`) while remaining lightweight and cleanly rebaseable against upstream Ghostty (`main`).
 
 ### Key Principles
 1. **Frontend Isolation**:
    - Terminal emulation, PTY logic, VT parsing, and GPU rendering remain entirely inside Ghostty's core Zig engine (`src/`).
-   - All widget and sidebar logic lives strictly in macOS Swift / SwiftUI (`macos/Sources/Features/Terminal/`).
+   - All widget and chin logic lives strictly in macOS Swift / SwiftUI (`macos/Sources/Features/Terminal/`).
    - Do **NOT** modify Zig core files unless explicitly requested.
 2. **Minimal Upstream Touchpoints**:
    - Keep changes to existing Ghostty files (like `TerminalView.swift`) down to minimal wrapper lines.
-   - All new widgets and UI modules should live in their own modular Swift files (e.g. `SidePanelView.swift` or dedicated widget files).
+   - All new widgets and UI modules should live in their own modular Swift files (e.g. `BottomPanelView.swift` or dedicated widget files).
 3. **Resizing Contract**:
    - Ghostty relies on AppKit / SwiftUI frame observers to resize its PTY surfaces.
-   - Any modifications to the sidebar width or visibility will trigger standard SwiftUI layout passes; Ghostty handles the terminal column/row math automatically.
+   - Any modifications to the chin height will trigger standard SwiftUI layout passes; Ghostty handles the terminal column/row math automatically.
 
 ---
 
@@ -30,8 +30,8 @@ macos/
 ├── Sources/
 │   └── Features/
 │       └── Terminal/
-│           ├── SidePanelView.swift      # Side panel UI, state model (SidePanelModel), and widgets
-│           ├── TerminalView.swift       # Ghostty's root SwiftUI terminal view (wraps split tree & side panel)
+│           ├── BottomPanelView.swift    # Bottom panel UI, state model (BottomPanelModel), and widgets
+│           ├── TerminalView.swift       # Ghostty's root SwiftUI terminal view (wraps split tree & bottom chin)
 │           ├── TerminalController.swift # Main window controller
 │           └── TerminalViewContainer.swift # NSView container for glass/window chrome
 ├── Ghostty.xcodeproj                   # Xcode project
@@ -75,7 +75,7 @@ Then re-run `./run.sh`.
 - **SwiftUI Material & Styling**:
   - Use `.ultraThinMaterial` or `Color(NSColor.windowBackgroundColor)` for background surfaces to blend seamlessly with macOS vibrancy and Ghostty's background transparency settings.
 - **State Management**:
-  - Keep state cleanly separated in `ObservableObject` classes (e.g. `SidePanelModel`).
+  - Keep state cleanly separated in `ObservableObject` classes (e.g. `BottomPanelModel`).
 - **Performance**:
   - Avoid heavy background loops or non-debounced polling in widgets. For time-based animations or clocks, use SwiftUI's `TimelineView`.
 - **Modularity**:
@@ -90,4 +90,4 @@ To sync new features and fixes from upstream Ghostty:
 git fetch upstream main
 git rebase upstream/main
 ```
-If merge conflicts occur in `TerminalView.swift`, ensure that the `HStack(spacing: 0)` wrapper around `TerminalSplitTreeView` is preserved.
+If merge conflicts occur in `TerminalView.swift`, ensure that the `VStack(spacing: 0)` wrapper with `TerminalSplitTreeView` and `BottomPanelView` is preserved.
