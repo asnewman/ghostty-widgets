@@ -64,6 +64,9 @@ struct TerminalView<ViewModel: TerminalViewModel>: View {
         return URL(fileURLWithPath: surfacePwd)
     }
 
+    /// State for the custom widget side panel
+    @StateObject private var sidePanelModel = SidePanelModel()
+
     var body: some View {
         switch ghostty.readiness {
         case .loading:
@@ -71,17 +74,24 @@ struct TerminalView<ViewModel: TerminalViewModel>: View {
         case .error:
             ErrorView()
         case .ready:
-            ZStack {
-                VStack(spacing: 0) {
-                    // If we're running in debug mode we show a warning so that users
-                    // know that performance will be degraded.
-                    if Ghostty.info.mode == GHOSTTY_BUILD_MODE_DEBUG || Ghostty.info.mode == GHOSTTY_BUILD_MODE_RELEASE_SAFE {
-                        DebugBuildWarningView()
-                    }
+            HStack(spacing: 0) {
+                if sidePanelModel.isExpanded {
+                    SidePanelView(model: sidePanelModel)
+                        .transition(.move(edge: .leading).combined(with: .opacity))
+                    Divider()
+                }
 
-                    TerminalSplitTreeView(
-                        tree: viewModel.surfaceTree,
-                        action: { delegate?.performSplitAction($0) })
+                ZStack {
+                    VStack(spacing: 0) {
+                        // If we're running in debug mode we show a warning so that users
+                        // know that performance will be degraded.
+                        if Ghostty.info.mode == GHOSTTY_BUILD_MODE_DEBUG || Ghostty.info.mode == GHOSTTY_BUILD_MODE_RELEASE_SAFE {
+                            DebugBuildWarningView()
+                        }
+
+                        TerminalSplitTreeView(
+                            tree: viewModel.surfaceTree,
+                            action: { delegate?.performSplitAction($0) })
                         .environmentObject(ghostty)
                         .ghosttyLastFocusedSurface(lastFocusedSurface)
                         .focused($focused)
@@ -123,6 +133,7 @@ struct TerminalView<ViewModel: TerminalViewModel>: View {
                 }
             }
             .frame(maxWidth: .greatestFiniteMagnitude, maxHeight: .greatestFiniteMagnitude)
+            }
         }
     }
 }
