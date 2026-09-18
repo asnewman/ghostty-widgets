@@ -4,15 +4,17 @@ set -e
 # Resolve root directory regardless of where script is run from
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MACOS_DIR="$ROOT_DIR/macos"
+CONFIG="${1:-Release}"
 SYMROOT="$MACOS_DIR/build"
-APP_PATH="$SYMROOT/Debug/Ghostty.app"
+APP_PATH="$SYMROOT/$CONFIG/Ghostty.app"
 
-echo "==> Building Ghostty (Debug)..."
+echo "==> Building Ghostty ($CONFIG)..."
 xcodebuild \
   -project "$MACOS_DIR/Ghostty.xcodeproj" \
   -scheme Ghostty \
-  -configuration Debug \
+  -configuration "$CONFIG" \
   SYMROOT="$SYMROOT" \
+  ENABLE_HARDENED_RUNTIME=NO \
   build
 
 echo "==> Restarting Ghostty..."

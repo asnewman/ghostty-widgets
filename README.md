@@ -14,14 +14,17 @@ A modification of [Ghostty](https://github.com/ghostty-org/ghostty) that adds a 
 
 1. **Build Ghostty core (first time only):**
    ```bash
-   zig build -Demit-macos-app=false
+   zig build -Doptimize=ReleaseFast -Demit-macos-app=false
    ```
+   The `ReleaseFast` flag is required: a Debug-built core shows a "You're running a debug build" banner with degraded performance.
 
 2. **Build and run macOS app:**
    ```bash
    ./run.sh
    ```
-   Or open `macos/Ghostty.xcodeproj` in Xcode.
+   This builds and launches the Release app. Or open `macos/Ghostty.xcodeproj` in Xcode (use the Release scheme).
+
+> **Note:** Always build and run in Release mode — Debug builds are never used in this project. A Debug Zig core triggers the "You're running a debug build" warning banner (with degraded performance), and `./run.sh` defaults to the Release configuration.
 
 ## How It Works
 
