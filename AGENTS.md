@@ -36,12 +36,17 @@ macos/
 │           └── TerminalViewContainer.swift # NSView container for glass/window chrome
 ├── Ghostty.xcodeproj                   # Xcode project
 └── build/                              # Local build output directory (gitignored)
-run.sh                                  # Automation script to compile & launch the debug app
+run.sh                                  # Automation script to compile & launch the Release app (`./run.sh [Debug|Release]`, defaults to Release)
 ```
 
 ---
 
 ## 3. Development Workflow & Commands
+
+### Release-Only Policy
+Always build and run in **Release** mode. Debug builds are never used in this project:
+- A Debug-built Zig core makes the app show the "You're running a debug build" warning banner (`TerminalView.swift` checks `Ghostty.info.mode`) with degraded performance. `ReleaseSafe` also triggers it — use `ReleaseFast`.
+- `run.sh` passes `ENABLE_HARDENED_RUNTIME=NO` because adhoc-signed local Release builds can't carry entitlements, and the hardened runtime otherwise kills the app at launch (dyld rejects the embedded Sparkle framework).
 
 ### Building and Running Swift / UI Changes
 When only `.swift` files are modified:
@@ -53,18 +58,19 @@ Or manually via `xcodebuild`:
 xcodebuild \
   -project macos/Ghostty.xcodeproj \
   -scheme Ghostty \
-  -configuration Debug \
+  -configuration Release \
   SYMROOT="$(pwd)/macos/build" \
+  ENABLE_HARDENED_RUNTIME=NO \
   build
 
 killall Ghostty 2>/dev/null || true
-open macos/build/Debug/Ghostty.app
+open macos/build/Release/Ghostty.app
 ```
 
 ### When Zig Core or Dependencies Change
 If upstream changes touch the Zig core or `GhosttyKit`:
 ```bash
-zig build -Demit-macos-app=false
+zig build -Doptimize=ReleaseFast -Demit-macos-app=false
 ```
 Then re-run `./run.sh`.
 
