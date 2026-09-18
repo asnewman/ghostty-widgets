@@ -100,6 +100,10 @@ struct TerminalView<ViewModel: TerminalViewModel>: View {
                         }
                         .onChange(of: pwdURL) { newValue in
                             self.delegate?.pwdDidChange(to: newValue)
+                            self.bottomPanelModel.pwd = surfacePwd
+                        }
+                        .onChange(of: surfacePwd) { newValue in
+                            self.bottomPanelModel.pwd = newValue
                         }
                         .onChange(of: cellSize) { newValue in
                             guard let size = newValue else { return }
