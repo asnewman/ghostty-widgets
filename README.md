@@ -1,8 +1,8 @@
 # Ghostty Widgets
 
-> **Warning**: Work in progress. Layouts and APIs are experimental and subject to change.
+> This is a work in progress.
 
-A modification of [Ghostty](https://github.com/ghostty-org/ghostty) that adds a native SwiftUI widget bottom panel ("chin") to the macOS app.
+A modification of [Ghostty](https://github.com/ghostty-org/ghostty) that adds a widget bottom panel. Only targeting macOS right now.
 
 ## Prerequisites
 
@@ -24,13 +24,7 @@ A modification of [Ghostty](https://github.com/ghostty-org/ghostty) that adds a 
    ```
    This builds and launches the Release app. Or open `macos/Ghostty.xcodeproj` in Xcode (use the Release scheme).
 
-> **Note:** Always build and run in Release mode — Debug builds are never used in this project. A Debug Zig core triggers the "You're running a debug build" warning banner (with degraded performance), and `./run.sh` defaults to the Release configuration.
-
-## How It Works
-
-- The bottom panel ("chin") is implemented in SwiftUI in `macos/Sources/Features/Terminal/BottomPanelView.swift`.
-- It is mounted in `macos/Sources/Features/Terminal/TerminalView.swift` inside a `VStack` below the terminal split tree.
-- Ghostty's existing frame listeners handle PTY column/row recalculation automatically.
+> **Note:** I always build and run in Release mode because there's no need for debug mode of Ghostty.
 
 ## Updating from Upstream
 
