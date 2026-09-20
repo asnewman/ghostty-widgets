@@ -20,8 +20,7 @@ struct BottomPanelView: View {
                 HStack(alignment: .center, spacing: 8) {
                     GitBranchWidget(model: gitModel)
                     GitStatusWidget(model: gitStatusModel) {
-                        gitStatusModel.invalidate()
-                        gitStatusModel.update(for: model.pwd)
+                        gitStatusModel.refresh()
                     }
 
                     Spacer()
