@@ -1,5 +1,6 @@
 import SwiftUI
 import Foundation
+import CoreServices
 
 /// State model reporting working-tree stats for a directory: files changed + added/deleted lines.
 final class GitStatusModel: ObservableObject {
@@ -9,19 +10,37 @@ final class GitStatusModel: ObservableObject {
     @Published var isGitRepo: Bool = false
 
     private var currentTask: Task<Void, Never>?
-    private var lastCheckedPath: String?
+    private var currentPath: String?
+    private var watchedPath: String?
+    private var eventStream: FSEventStreamRef?
+    private var debounceWorkItem: DispatchWorkItem?
+
+    deinit {
+        stopWatching()
+    }
 
     func update(for path: String?) {
         guard let path = path, !path.isEmpty else {
             reset()
             return
         }
-        if path == lastCheckedPath { return }
-        lastCheckedPath = path
+        currentPath = path
+        refresh(watchFor: path)
+    }
+
+    /// Re-queries stats for the current path.
+    /// Used by the file watcher and manual refresh.
+    func refresh(watchFor path: String? = nil) {
+        let target = path ?? currentPath
+        guard let target = target, !target.isEmpty else {
+            reset()
+            return
+        }
 
         currentTask?.cancel()
         currentTask = Task.detached(priority: .utility) { [weak self] in
-            let stats = Self.resolveStatus(for: path)
+            let stats = Self.resolveStatus(for: target)
+            let toplevel = Self.resolveToplevel(for: target)
             await MainActor.run {
                 guard !Task.isCancelled else { return }
                 withAnimation(.easeInOut(duration: 0.15)) {
@@ -30,19 +49,91 @@ final class GitStatusModel: ObservableObject {
                     self?.deleted = stats?.deleted ?? 0
                     self?.isGitRepo = (stats != nil)
                 }
+                self?.startWatching(toplevel: toplevel)
             }
         }
     }
 
-    func invalidate() { lastCheckedPath = nil }
+    func invalidate() {
+        currentPath = nil
+        stopWatching()
+    }
 
     private func reset() {
         currentTask?.cancel()
+        stopWatching()
         fileCount = 0; added = 0; deleted = 0; isGitRepo = false
-        lastCheckedPath = nil
+        currentPath = nil
+    }
+
+    // MARK: - File watching (FSEvents)
+
+    /// Watches the repo toplevel so edits, staging, and commits refresh the badge.
+    /// No-op when already watching the same toplevel.
+    private func startWatching(toplevel: String?) {
+        guard let toplevel = toplevel, !toplevel.isEmpty else {
+            stopWatching()
+            return
+        }
+        if watchedPath == toplevel, eventStream != nil { return }
+        stopWatching()
+
+        var context = FSEventStreamContext(
+            version: 0,
+            info: Unmanaged.passUnretained(self).toOpaque(),
+            retain: nil,
+            release: nil,
+            copyDescription: nil
+        )
+        let callback: FSEventStreamCallback = { _, info, _, _, _, _ in
+            guard let info = info else { return }
+            let model = Unmanaged<GitStatusModel>.fromOpaque(info).takeUnretainedValue()
+            model.scheduleDebouncedRefresh()
+        }
+        guard let stream = FSEventStreamCreate(
+            kCFAllocatorDefault,
+            callback,
+            &context,
+            [toplevel] as CFArray,
+            FSEventStreamEventId(kFSEventStreamEventIdSinceNow),
+            0.5, // latency: coalesce bursts (saves, builds) into one refresh
+            UInt32(kFSEventStreamCreateFlagFileEvents | kFSEventStreamCreateFlagNoDefer)
+        ) else { return }
+        FSEventStreamScheduleWithRunLoop(stream, CFRunLoopGetMain(), CFRunLoopMode.defaultMode.rawValue)
+        FSEventStreamStart(stream)
+        eventStream = stream
+        watchedPath = toplevel
+    }
+
+    private func stopWatching() {
+        debounceWorkItem?.cancel()
+        debounceWorkItem = nil
+        if let stream = eventStream {
+            FSEventStreamStop(stream)
+            FSEventStreamInvalidate(stream)
+            FSEventStreamRelease(stream)
+            eventStream = nil
+        }
+        watchedPath = nil
+    }
+
+    /// Coalesces rapid event bursts; only the last one in the window refreshes.
+    private func scheduleDebouncedRefresh() {
+        debounceWorkItem?.cancel()
+        let item = DispatchWorkItem { [weak self] in self?.refresh() }
+        debounceWorkItem = item
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: item)
     }
 
     private struct Stats { var files: Int; var added: Int; var deleted: Int }
+
+    private static func resolveToplevel(for path: String) -> String? {
+        guard let out = runGit(arguments: ["--no-optional-locks", "-C", path, "rev-parse", "--show-toplevel"]) else {
+            return nil
+        }
+        let trimmed = out.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
 
     private static func resolveStatus(for path: String) -> Stats? {
         let gitPath = "/usr/bin/git"
