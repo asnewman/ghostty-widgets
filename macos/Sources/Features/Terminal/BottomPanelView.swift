@@ -12,12 +12,17 @@ final class BottomPanelModel: ObservableObject {
 struct BottomPanelView: View {
     @ObservedObject var model: BottomPanelModel
     @StateObject private var gitModel = GitBranchModel()
+    @StateObject private var gitStatusModel = GitStatusModel()
 
     var body: some View {
         Group {
             if model.isExpanded {
                 HStack(alignment: .center, spacing: 8) {
                     GitBranchWidget(model: gitModel)
+                    GitStatusWidget(model: gitStatusModel) {
+                        gitStatusModel.invalidate()
+                        gitStatusModel.update(for: model.pwd)
+                    }
 
                     Spacer()
 
@@ -53,9 +58,11 @@ struct BottomPanelView: View {
         .background(.ultraThinMaterial)
         .onChange(of: model.pwd) { newPwd in
             gitModel.update(for: newPwd)
+            gitStatusModel.update(for: newPwd)
         }
         .onAppear {
             gitModel.update(for: model.pwd)
+            gitStatusModel.update(for: model.pwd)
         }
     }
 }
