@@ -1,5 +1,6 @@
 import SwiftUI
 import Foundation
+import AppKit
 import CoreServices
 
 /// State model reporting working-tree stats for a directory: files changed + added/deleted lines.
@@ -8,6 +9,7 @@ final class GitStatusModel: ObservableObject {
     @Published var added: Int = 0
     @Published var deleted: Int = 0
     @Published var isGitRepo: Bool = false
+    @Published var repoPath: String?
 
     private var currentTask: Task<Void, Never>?
     private var currentPath: String?
@@ -48,6 +50,7 @@ final class GitStatusModel: ObservableObject {
                     self?.added = stats?.added ?? 0
                     self?.deleted = stats?.deleted ?? 0
                     self?.isGitRepo = (stats != nil)
+                    self?.repoPath = toplevel ?? target
                 }
                 self?.startWatching(toplevel: toplevel)
             }
@@ -64,6 +67,28 @@ final class GitStatusModel: ObservableObject {
         stopWatching()
         fileCount = 0; added = 0; deleted = 0; isGitRepo = false
         currentPath = nil
+        repoPath = nil
+    }
+
+    /// Opens the current repo in Sublime Merge (falls back to refresh if unavailable).
+    func openInSublimeMerge() {
+        guard let path = repoPath ?? currentPath else { return }
+        let smergePaths = ["/opt/homebrew/bin/smerge", "/usr/local/bin/smerge"]
+        for cli in smergePaths where FileManager.default.isExecutableFile(atPath: cli) {
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: cli)
+            process.arguments = [path]
+            try? process.run()
+            return
+        }
+        let repoURL = URL(fileURLWithPath: path)
+        if !NSWorkspace.shared.open([repoURL],
+            withAppBundleIdentifier: "com.sublimemerge",
+            options: [],
+            additionalEventParamDescriptor: nil,
+            launchIdentifiers: nil) {
+            refresh()
+        }
     }
 
     // MARK: - File watching (FSEvents)
@@ -180,14 +205,14 @@ final class GitStatusModel: ObservableObject {
     }
 }
 
-/// Compact badge: "3 files  +152/-23" (tap to refresh).
+/// Compact badge: "3 files  +152/-23" (tap to open Sublime Merge).
 struct GitStatusWidget: View {
     @ObservedObject var model: GitStatusModel
     var onRefresh: (() -> Void)?
 
     var body: some View {
         if model.isGitRepo {
-            Button(action: { onRefresh?() }) {
+            Button(action: { model.openInSublimeMerge() }) {
                 HStack(spacing: 5) {
                     Image(systemName: "doc.on.doc")
                         .font(.system(size: 11, weight: .semibold))
@@ -210,7 +235,7 @@ struct GitStatusWidget: View {
                 .lineLimit(1)
             }
             .buttonStyle(.plain)
-            .help("Files changed: \(model.fileCount), +\(model.added)/-\(model.deleted)")
+            .help("Files changed: \(model.fileCount), +\(model.added)/-\(model.deleted) — click to open in Sublime Merge")
             .transition(.opacity.combined(with: .scale(scale: 0.95)))
         }
     }
