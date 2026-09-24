@@ -20,6 +20,11 @@ xcodebuild \
 echo "==> Restarting Ghostty..."
 killall Ghostty 2>/dev/null || true
 sleep 0.5
+for var in $(compgen -e); do
+  case "$var" in
+    HERDR_*) unset "$var" ;;
+  esac
+done
 open "$APP_PATH"
 
 echo "==> Ghostty launched successfully!"
