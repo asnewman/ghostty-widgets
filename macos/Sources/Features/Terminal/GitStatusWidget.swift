@@ -213,24 +213,24 @@ struct GitStatusWidget: View {
     var body: some View {
         if model.isGitRepo {
             Button(action: { model.openInSublimeMerge() }) {
-                HStack(spacing: 5) {
+                HStack(spacing: 7.5) {
                     Image(systemName: "doc.on.doc")
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(.system(size: 16.5, weight: .semibold))
                     Text("\(model.fileCount) file\(model.fileCount == 1 ? "" : "s")")
-                        .font(.system(size: 11, weight: .medium, design: .monospaced))
+                        .font(.system(size: 16.5, weight: .medium, design: .monospaced))
                     HStack(spacing: 0) {
                         Text("+\(model.added)")
-                            .font(.system(size: 11, weight: .medium, design: .monospaced))
+                            .font(.system(size: 16.5, weight: .medium, design: .monospaced))
                             .foregroundColor(model.added == 0 ? .secondary : .green)
                         Text("/-\(model.deleted)")
-                            .font(.system(size: 11, weight: .medium, design: .monospaced))
+                            .font(.system(size: 16.5, weight: .medium, design: .monospaced))
                             .foregroundColor(model.deleted == 0 ? .secondary : .red)
                     }
                 }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 3)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 4.5)
                 .background(Color.primary.opacity(0.06))
-                .cornerRadius(5)
+                .cornerRadius(7.5)
                 .foregroundColor(.secondary)
                 .lineLimit(1)
             }

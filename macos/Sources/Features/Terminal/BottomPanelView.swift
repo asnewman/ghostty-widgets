@@ -6,7 +6,7 @@ final class BottomPanelModel: ObservableObject {
     private static let logger = Logger(
         subsystem: Bundle.main.bundleIdentifier!,
         category: "herdr-widget")
-    @Published var panelHeight: CGFloat = 32
+    @Published var panelHeight: CGFloat = 62.4
 
     /// The pwd of the focused Ghostty surface, as reported by the outer shell.
     @Published var pwd: String? {
@@ -140,7 +140,7 @@ struct BottomPanelView: View {
     @StateObject private var gitStatusModel = GitStatusModel()
 
     var body: some View {
-        HStack(alignment: .center, spacing: 8) {
+        HStack(alignment: .center, spacing: 12) {
             GitBranchWidget(model: gitModel)
             GitStatusWidget(model: gitStatusModel) {
                 gitStatusModel.refresh()
@@ -148,7 +148,7 @@ struct BottomPanelView: View {
 
             Spacer()
         }
-        .padding(.horizontal, 10)
+        .padding(.horizontal, 15)
         .frame(maxWidth: .infinity)
         .frame(height: model.panelHeight)
         .background(.ultraThinMaterial)

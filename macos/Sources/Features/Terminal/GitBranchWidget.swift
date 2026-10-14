@@ -220,26 +220,26 @@ struct GitBranchWidget: View {
                     }
                 }
             } label: {
-                HStack(spacing: 5) {
+                HStack(spacing: 7.5) {
                     Image(systemName: "arrow.triangle.branch")
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(.system(size: 16.5, weight: .semibold))
                     Text(branch)
-                        .font(.system(size: 11, weight: .medium, design: .monospaced))
+                        .font(.system(size: 16.5, weight: .medium, design: .monospaced))
                         .lineLimit(1)
                     if model.isSwitching {
                         ProgressView()
-                            .scaleEffect(0.6)
-                            .frame(width: 12, height: 12)
+                            .scaleEffect(0.9)
+                            .frame(width: 18, height: 18)
                     } else {
                         Image(systemName: "chevron.down")
-                            .font(.system(size: 9, weight: .semibold))
+                            .font(.system(size: 13.5, weight: .semibold))
                             .foregroundColor(.secondary.opacity(0.7))
                     }
                 }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 3)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 4.5)
                 .background(Color.primary.opacity(0.06))
-                .cornerRadius(5)
+                .cornerRadius(7.5)
                 .foregroundColor(.secondary)
                 .contentShape(Rectangle())
             }
