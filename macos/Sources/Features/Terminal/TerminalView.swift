@@ -67,6 +67,15 @@ struct TerminalView<ViewModel: TerminalViewModel>: View {
     /// State for the custom widget bottom panel (chin)
     @StateObject private var bottomPanelModel = BottomPanelModel()
 
+    /// Points the bottom panel's Herdr monitor at the given surface so it can
+    /// tell whether a Herdr client is the foreground process there.
+    private func updateHerdrProbe(for surface: Ghostty.SurfaceView?) {
+        guard let surface else { return }
+        bottomPanelModel.foregroundPIDProvider = { [weak surface] in
+            surface?.surfaceModel?.foregroundPID
+        }
+    }
+
     var body: some View {
         switch ghostty.readiness {
         case .loading:
@@ -89,13 +98,17 @@ struct TerminalView<ViewModel: TerminalViewModel>: View {
                         .environmentObject(ghostty)
                         .ghosttyLastFocusedSurface(lastFocusedSurface)
                         .focused($focused)
-                        .onAppear { self.focused = true }
+                        .onAppear {
+                            self.focused = true
+                            self.updateHerdrProbe(for: focusedSurface ?? lastFocusedSurface?.value)
+                        }
                         .onChange(of: focusedSurface) { newValue in
                             // We want to keep track of our last focused surface so even if
                             // we lose focus we keep this set to the last non-nil value.
                             if newValue != nil {
                                 lastFocusedSurface = .init(newValue)
                                 self.delegate?.focusedSurfaceDidChange(to: newValue)
+                                self.updateHerdrProbe(for: newValue)
                             }
                         }
                         .onChange(of: pwdURL) { newValue in
