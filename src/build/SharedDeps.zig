@@ -722,6 +722,7 @@ fn addGtkNg(
             .{ "glib", "glib2" },
             .{ "glibunix", "glibunix2" },
             .{ "gobject", "gobject2" },
+            .{ "graphene", "graphene1" },
             .{ "gtk", "gtk4" },
             .{ "xlib", "xlib2" },
         };
@@ -1102,6 +1103,12 @@ fn gtkNgDistResourcesUncached(b: *std.Build) GtkNgResources {
                 },
             )));
             compile.step.dependOn(&check_run.step);
+
+            // A run step treats anything on an uncaptured stderr as an
+            // error, so a warning (an unused import, a widget deprecated by
+            // a newer GTK) would fail a blueprint that compiled. Captured,
+            // it is only shown if the compiler exits nonzero.
+            _ = compile.captureStdErr(.{});
 
             _ = ui_files.addCopyFile(ui_file, sub_path);
         }
