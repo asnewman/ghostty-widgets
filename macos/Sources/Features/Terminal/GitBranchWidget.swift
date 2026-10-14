@@ -1,5 +1,6 @@
 import SwiftUI
 import Foundation
+import CoreServices
 
 /// State model responsible for discovering and reporting the Git branch of a directory.
 final class GitBranchModel: ObservableObject {
@@ -12,9 +13,18 @@ final class GitBranchModel: ObservableObject {
     private var currentTask: Task<Void, Never>?
     private var lastCheckedPath: String?
     private var repoPath: String?
+    private var watchedPath: String?
+    private var eventStream: FSEventStreamRef?
+    private var debounceWorkItem: DispatchWorkItem?
+
+    deinit {
+        stopWatching()
+    }
 
     func update(for path: String?) {
         guard let path = path, !path.isEmpty else {
+            currentTask?.cancel()
+            stopWatching()
             self.currentBranch = nil
             self.isGitRepo = false
             self.branches = []
@@ -27,20 +37,93 @@ final class GitBranchModel: ObservableObject {
         if path == lastCheckedPath && currentBranch != nil {
             return
         }
+        stopWatching()
         lastCheckedPath = path
         repoPath = path
+        refresh()
+    }
 
+    private func refresh() {
+        guard let path = repoPath else { return }
         currentTask?.cancel()
         currentTask = Task.detached(priority: .utility) { [weak self] in
+            // Resolve the actual metadata directory: .git can be a file in a worktree.
+            let gitDirectory = Self.runGit(arguments: ["-C", path, "rev-parse", "--absolute-git-dir"])?
+                .trimmingCharacters(in: .whitespacesAndNewlines)
             let branch = Self.resolveGitBranch(for: path)
             await MainActor.run {
-                guard !Task.isCancelled else { return }
+                guard !Task.isCancelled, let self, self.repoPath == path else { return }
+                self.startWatching(gitDirectory: gitDirectory)
                 withAnimation(.easeInOut(duration: 0.15)) {
-                    self?.currentBranch = branch
-                    self?.isGitRepo = (branch != nil)
+                    self.currentBranch = branch
+                    self.isGitRepo = (branch != nil)
                 }
             }
         }
+    }
+
+    /// Watch the directory rather than HEAD itself, which Git replaces atomically.
+    private func startWatching(gitDirectory: String?) {
+        guard let gitDirectory, !gitDirectory.isEmpty else {
+            stopWatching()
+            return
+        }
+        if watchedPath == gitDirectory, eventStream != nil { return }
+        stopWatching()
+
+        var context = FSEventStreamContext(
+            version: 0,
+            info: Unmanaged.passUnretained(self).toOpaque(),
+            retain: nil,
+            release: nil,
+            copyDescription: nil
+        )
+        let callback: FSEventStreamCallback = { _, info, _, _, _, _ in
+            guard let info else { return }
+            let model = Unmanaged<GitBranchModel>.fromOpaque(info).takeUnretainedValue()
+            model.scheduleRefresh()
+        }
+        guard let stream = FSEventStreamCreate(
+            kCFAllocatorDefault,
+            callback,
+            &context,
+            [gitDirectory] as CFArray,
+            FSEventStreamEventId(kFSEventStreamEventIdSinceNow),
+            0.25,
+            UInt32(kFSEventStreamCreateFlagFileEvents | kFSEventStreamCreateFlagNoDefer)
+        ) else { return }
+        FSEventStreamSetDispatchQueue(stream, DispatchQueue.main)
+        guard FSEventStreamStart(stream) else {
+            FSEventStreamInvalidate(stream)
+            FSEventStreamRelease(stream)
+            return
+        }
+        eventStream = stream
+        watchedPath = gitDirectory
+        // Close the gap between the initial query and installing the watcher.
+        scheduleRefresh()
+    }
+
+    private func scheduleRefresh() {
+        debounceWorkItem?.cancel()
+        let item = DispatchWorkItem { [weak self] in
+            self?.refresh()
+            self?.refreshBranches()
+        }
+        debounceWorkItem = item
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: item)
+    }
+
+    private func stopWatching() {
+        debounceWorkItem?.cancel()
+        debounceWorkItem = nil
+        if let stream = eventStream {
+            FSEventStreamStop(stream)
+            FSEventStreamInvalidate(stream)
+            FSEventStreamRelease(stream)
+            eventStream = nil
+        }
+        watchedPath = nil
     }
 
     /// Loads local branches ordered by most recently checked out first.
@@ -50,6 +133,7 @@ final class GitBranchModel: ObservableObject {
         Task.detached(priority: .utility) { [weak self] in
             let ordered = Self.resolveBranchesByRecency(for: path)
             await MainActor.run {
+                guard self?.repoPath == path else { return }
                 self?.branches = ordered
             }
         }
